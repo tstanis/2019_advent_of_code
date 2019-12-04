@@ -1,7 +1,4 @@
-
-import string
-
-grid = [[0 for i in range(0, 20000)] for j in range(0, 20000)]
+rid = [[0 for i in range(0, 20000)] for j in range(0, 20000)]
 
 def print_grid(grid):
     for row in grid[::-1]:
