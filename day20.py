@@ -50,29 +50,46 @@ def print_map():
     for row in drawmap:
         print(''.join(row))
 
-def find_shortest_path(depth, cur_name, cur_loc, end_portal_name, themap, name_to_portals, position_to_portal, paths, length, visited):
-    indent = " " * depth
-    print(indent + "Find Shortest " + cur_name)
-    visited[cur_name] = 1
-    results = []
-    for dist, choice, pos in paths[cur_name][cur_loc]:
-        print(indent + choice)
-        if choice == end_portal_name:
-            results.append(length + dist)
-        elif not choice in visited:
-            p = name_to_portals[choice]
-            otherside = p[0] if p[0] != pos else p[1]
-            subresult = find_shortest_path(depth+1, choice, otherside, end_portal_name, themap, name_to_portals, \
-                position_to_portal, paths, length + dist + 1, visited.copy())
-            if subresult:
-                results.append(subresult)
-    if len(results) > 0:
-        return min(results)
-    else:
-        return None
-
-
-
+def find_shortest_path(start_name, start_loc, end_portal_name, themap, name_to_portals, position_to_portal, paths,\
+    pos_inportals):
+    #indent = " " * depth
+    #print(indent + "Find Shortest " + start_name)
+    best_result = -1
+    best_path = []
+    open_nodes = [(start_name, start_loc, 0, {start_name:1}, 0, [])]
+    not_better = 0
+    next_test = 1
+    while len(open_nodes) > 0:
+        #print("Num Open: " + str(len(open_nodes)))
+        cur_name, cur_loc, length, visited, level, path = open_nodes.pop(0)
+        visited[(cur_name, level)] = 1
+        for dist, choice, pos in paths[cur_name][cur_loc]:
+            if choice == end_portal_name and level == 0:
+                if length+dist < best_result or best_result == -1:
+                    best_result = length+dist
+                    best_path = path.copy()
+                    best_path.append((cur_name, choice, dist, length, level))
+            else: #if not (choice, level) in visited:
+                if choice == 'AA':
+                    continue
+                if choice == 'ZZ' and level != 0:
+                    continue
+                if level == 0 and not pos in pos_inportals:
+                    continue
+                if length + dist > best_result and best_result != -1:
+                    print("Stoppping with dist: " + str(length+dist))
+                    continue
+                p = name_to_portals[choice]
+                otherside = p[0] if p[0] != pos else p[1]
+                next_level = level + (1 if pos in pos_inportals else -1)
+                if next_level == -1:
+                    print(str(pos))
+                    exit()
+                next_path = path.copy()
+                next_path.append((cur_name, choice, dist, length, level))
+                open_nodes.append((choice, otherside, length + dist + 1, visited.copy(), next_level, next_path))
+                #print("Level " + str(level) + " " + str(pos))
+    return best_result, best_path
 
 mymap = []
 with open('day20.txt') as file:
@@ -97,5 +114,8 @@ print("NAME TO PORTAL: " + str(name_to_portals))
 paths = find_path_lengths_from(mymap, position_to_portal, name_to_portals)
 print("PATHS: " + str(paths))
 
-shortest = find_shortest_path(0, "AA", name_to_portals['AA'][0], "ZZ", mymap, name_to_portals, position_to_portal, paths, 0, {})
-print("SHORTEST: "+ str(shortest))
+pos_inportals = {value: key for key, value in inportals.items()}
+print("INPORTALS: " + str(pos_inportals))
+shortest, shortest_path = find_shortest_path("AA", name_to_portals['AA'][0], "ZZ", mymap, name_to_portals, \
+    position_to_portal, paths, pos_inportals)
+print("SHORTEST: "+ str(shortest) + " " + str(len(shortest_path)) + " " + str(shortest_path))
