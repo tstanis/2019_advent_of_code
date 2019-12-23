@@ -1,7 +1,11 @@
 import copy
+import heapq
 from timeit import default_timer as timer
 from collections import defaultdict
 
+# Found Answer: 4258 127.77571289800001
+# Found Answer: 4256 734.3117911439999
+# Found Answer: 4252 1032.649414664
 mymap = []
 with open('day18.txt') as file:
     for line in file:
@@ -92,15 +96,18 @@ def move(oldpos, newpos, curmap):
 
 def find_best_path(loc, curkeys, curmap, inter_map):
     start = timer()
-    open_nodes = [(None, loc, 0, curkeys, set())]
-    best_len = None #4258
+    open_nodes = [(0, None, loc, 0, curkeys, set())]
+    heapq.heapify(open_nodes)
+    best_len = 4252
     i = 0
     while len(open_nodes) > 0:
         #print(str(open_nodes))
         i += 1
-        if i % 10000 == 0:
-            print(str(i) + " " + str(timer() - start))
-        key, loc, path_len, curkeys, opendoors = open_nodes.pop(-1)
+        if i % 1000000 == 0:
+            max_distance = max(open_nodes, key=lambda x: x[3])[3]
+            print(str(i) + " max dist = " + str(max_distance) + " " + str(timer() - start))
+            #open_nodes.append(open_nodes.pop(0))
+        priority, key, loc, path_len, curkeys, opendoors = heapq.heappop(open_nodes)
         if best_len != None and path_len > best_len:
             continue
         nextkeys = curkeys.copy()
@@ -112,25 +119,32 @@ def find_best_path(loc, curkeys, curmap, inter_map):
             if not best_len or path_len < best_len:
                 print("Found Answer: " + str(path_len) + " " + str(timer() - start))
                 best_len = path_len
+            else:
+                continue
         choices = find_key_choices(nextkeys, curmap, loc, nextopendoors, inter_map, 0 if not best_len else best_len - path_len)
         #print ("Choices: " + str(choices))
         if len(choices) > 0:
             for key, dist, thestart in choices:
                 #print("Choice %s dist %d" % (key, dist))
-                open_nodes.append((key, nextkeys[key], path_len+dist, nextkeys, nextopendoors))
+                priority = (best_len - (path_len+dist), len(nextkeys))
+                heapq.heappush(open_nodes, (priority, key, nextkeys[key], path_len+dist, nextkeys, nextopendoors))
     return best_len
-            
 
+cache = {}
 def find_key_choices(curkeys, curmap, curstart, opened_doors, inter_map, max_len):
+    cache_key = (curstart, tuple(opened_doors))
+    if cache_key in cache:
+        return list(filter(lambda x: not max_len or x[1] <= max_len, cache[cache_key]))
     options = []
     for key, loc in curkeys.items():
         #path_len_old = find_path_length(curstart, loc, curmap, opened_doors, max_len)
-        path_len = find_path_length_using_inters(curstart, loc, curmap, opened_doors, inter_map, max_len)
+        path_len = find_path_length_using_inters(curstart, loc, curmap, opened_doors, inter_map, None)
         #if path_len != path_len_old:
         #    print("MISMATCH: old=" + str(path_len_old) + " new= " + str(path_len) + " " + str(curstart) + " " + str(loc) + " " + str(opened_doors) + " " + str(max_len))
         if path_len:
             options.append((key, path_len, curstart))
-    return options
+    cache[cache_key] = options.copy()
+    return list(filter(lambda x: not max_len or x[1] <= max_len, options))
 
 def find_intersections(themap):
     print("Dim %d, %d" % (len(mymap[0]), len(mymap)))
@@ -138,6 +152,9 @@ def find_intersections(themap):
     dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]
     for y in range(1, len(mymap)-1):
         for x in range(1, len(mymap[0])-1):
+            if themap[y][x].islower():
+                results.add((x,y))
+                continue
             if themap[y][x] != '.' and themap[y][x] != '@':
                 continue
             #print("%d, %d" % (x, y))
@@ -289,11 +306,11 @@ print("FIRST INTERSECTION: " + str(get_reachable_inters(mymap, inter_map.keys(),
 print("Doors: " + str(doors))
 print("Keys: " + str(keys))
 from_test = (40, 40)
-for key, inter in keys.items(): #[('o', (31, 39))]:
-    open_doors = {'A', 'B', 'C', 'D', 'E', 'F', 'G'}
-    path_old = find_path_length(from_test, inter, mymap, open_doors, None)
-    path_new = find_path_length_using_inters(from_test, inter, mymap, open_doors, inter_map, None)
-    print("Path Distance " + str(key) + " " + str(inter) + ": " + str(path_old) + " " + str(path_new) )
+#for key, inter in keys.items(): #[('o', (31, 39))]:
+#    open_doors = {'A', 'B', 'C', 'D', 'E', 'F', 'G'}
+#    path_old = find_path_length(from_test, inter, mymap, open_doors, None)
+#    path_new = find_path_length_using_inters(from_test, inter, mymap, open_doors, inter_map, None)
+#    print("Path Distance " + str(key) + " " + str(inter) + ": " + str(path_old) + " " + str(path_new) )
 
 visited = {}
 choices = find_key_choices(keys, mymap, start, {}, inter_map, None)
