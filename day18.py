@@ -11,18 +11,26 @@ with open('day18.txt') as file:
     for line in file:
         mymap.append(list(line.rstrip()))
 
+mymap[40][40] = '#'
+mymap[41][40] = '#'
+mymap[39][40] = '#'
+mymap[40][39] = '#'
+mymap[40][41] = '#'
+
 keys = {}
 doors = {}
-start = None
+starts = []
+for cell in [(39, 39), (41, 39), (41, 41), (39, 41)]:
+    mymap[cell[1]][cell[0]] = '@'
 
 def find_map_bits():
-    global mymap, keys, doors, start
+    global mymap, keys, doors, starts
     for y in range(0, len(mymap)):
         for x in range(0, len(mymap[0])):
             element = mymap[y][x]
             if element != "." and element != "#":
                 if element == '@':
-                    start = (x, y)
+                    starts.append((x, y))
                 elif element.islower():
                     keys[element] = (x, y)
                 else:
@@ -98,9 +106,9 @@ def move(oldpos, newpos, curmap):
 best_path_cache = {}
 best_path_cache_hit = 0
 best_path_cache_miss = 0
-def find_best_path(loc, curkeys, curmap, inter_map, opendoors, depth):
+def find_best_path(locs, curkeys, curmap, inter_map, opendoors, depth):
     global best_path_cache_hit, best_path_cache_miss
-    cache_key = (loc, tuple(curkeys))
+    cache_key = (tuple(locs), tuple(curkeys))
     if cache_key in best_path_cache:
         #print("Cache Hit!")
         best_path_cache_hit += 1
@@ -109,7 +117,7 @@ def find_best_path(loc, curkeys, curmap, inter_map, opendoors, depth):
         best_path_cache_miss += 1
 
     start = timer()
-    open_nodes = [(0, None, loc, 0, curkeys, opendoors)]
+    open_nodes = [(0, None, locs, 0, curkeys, opendoors)]
     heapq.heapify(open_nodes)
     best_len = 10000 #4252
     i = 0
@@ -120,7 +128,7 @@ def find_best_path(loc, curkeys, curmap, inter_map, opendoors, depth):
             #max_distance = max(open_nodes, key=lambda x: x[3])[3]
             print(str(i) + " best dist = " + str(best_len) + " cache hit/miss" + str(best_path_cache_hit) + "/" + str(best_path_cache_miss) + " " + str(timer() - start))
             #open_nodes.append(open_nodes.pop(0))
-        priority, key, loc, path_len, curkeys, opendoors = heapq.heappop(open_nodes)
+        priority, key, locs, path_len, curkeys, opendoors = heapq.heappop(open_nodes)
         if best_len != None and path_len > best_len:
             continue
         nextkeys = curkeys.copy()
@@ -130,7 +138,7 @@ def find_best_path(loc, curkeys, curmap, inter_map, opendoors, depth):
             nextopendoors.add(key.upper())
         if key and len(nextkeys.keys()) > 5:
             #print(''.join([" "] * depth) + "Find Best Path " + str(loc) + " " + str(len(nextkeys.keys())))
-            subcall_result = find_best_path(loc, nextkeys, curmap, inter_map, nextopendoors, depth + 1)
+            subcall_result = find_best_path(locs.copy(), nextkeys, curmap, inter_map, nextopendoors, depth + 1)
             #print(''.join([" "] * depth) + "Result " + str(subcall_result))
             path_len += subcall_result
             nextkeys = {}
@@ -142,14 +150,17 @@ def find_best_path(loc, curkeys, curmap, inter_map, opendoors, depth):
                 best_len = path_len 
             else:   
                 continue
-        choices = find_key_choices(nextkeys, curmap, loc, nextopendoors, inter_map, 0 if not best_len else best_len - path_len)
+        choices_by_loc = {}
+        for loc in locs:
+            choices_by_loc[loc] = find_key_choices(nextkeys.copy(), curmap, loc, nextopendoors, inter_map, 0 if not best_len else best_len - path_len)
         #print ("Choices: " + str(choices))
         #print("Keys: " + str(nextkeys))
-        if len(choices) > 0:
-            for key, dist, thestart in choices:
-                #print("Choice %s dist %d" % (key, dist))
-                priority = (best_len - (path_len+dist), len(nextkeys))
-                heapq.heappush(open_nodes, (priority, key, nextkeys[key], path_len+dist, nextkeys, nextopendoors))
+        for loc, choices in choices_by_loc.items():
+            if len(choices) > 0:
+                for key, dist, thestart in choices:
+                    #print("Choice %s dist %d" % (key, dist))
+                    priority = (best_len - (path_len+dist), len(nextkeys))
+                    heapq.heappush(open_nodes, (priority, key, [nextkeys[key] if oldloc==loc else oldloc for oldloc in locs], path_len+dist, nextkeys, nextopendoors))
     best_path_cache[cache_key] = best_len
     return best_len
 
@@ -324,8 +335,8 @@ print("INTERSECTION_MAP ")
 for inter, info in inter_map.items():
     print(str(inter) + " -> " + str(info))
 print("NUM INTERSECTIONS: " + str(len(inter_map.keys())))
-print("START: " + str(start))
-print("FIRST INTERSECTION: " + str(get_reachable_inters(mymap, inter_map.keys(), start, None)))
+print("STARTS: " + str(starts))
+print("FIRST INTERSECTION[0]: " + str(get_reachable_inters(mymap, inter_map.keys(), starts[0], None)))
 print("Doors: " + str(doors))
 print("Keys: " + str(keys))
 from_test = (40, 40)
@@ -336,7 +347,7 @@ from_test = (40, 40)
 #    print("Path Distance " + str(key) + " " + str(inter) + ": " + str(path_old) + " " + str(path_new) )
 
 visited = {}
-choices = find_key_choices(keys, mymap, start, {}, inter_map, None)
+#choices = find_key_choices(keys, mymap, start, {}, inter_map, None)
 #print(str(choices))
-results = find_best_path(start, keys, mymap, inter_map, set(), 0)
+results = find_best_path(starts, keys, mymap, inter_map, set(), 0)
 print("RESULTS: " + str(results))
