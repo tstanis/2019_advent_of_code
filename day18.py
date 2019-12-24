@@ -136,7 +136,7 @@ def find_best_path(locs, curkeys, curmap, inter_map, opendoors, depth):
         if key:
             del nextkeys[key]
             nextopendoors.add(key.upper())
-        if key and len(nextkeys.keys()) > 5:
+        if key and len(nextkeys.keys()) > 3:
             #print(''.join([" "] * depth) + "Find Best Path " + str(loc) + " " + str(len(nextkeys.keys())))
             subcall_result = find_best_path(locs.copy(), nextkeys, curmap, inter_map, nextopendoors, depth + 1)
             #print(''.join([" "] * depth) + "Result " + str(subcall_result))
